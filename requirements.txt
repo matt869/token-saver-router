@@ -7,6 +7,11 @@ requests>=2.31
 # --- Token counting (real before/after measurement; falls back to chars/4) ---
 tiktoken>=0.7
 
+# --- Executor path (deterministic math at ZERO remote tokens) ---
+# Required in the built image or the math executor silently no-ops (ImportError
+# is swallowed, so equations would fall through to a model instead of solving).
+sympy>=1.12
+
 # --- Semantic cache (embeddings run locally => free in scoring) ---
 sentence-transformers>=3.0
 faiss-cpu>=1.8

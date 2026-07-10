@@ -36,7 +36,22 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # App source.
 COPY app ./app
 
+# --- Track 1 batch submission defaults --------------------------------------
+# The scoring harness runs this as a batch job: read /input/tasks.json, route
+# every task, write /output/results.json, exit 0.
+ENV INPUT_PATH=/input/tasks.json \
+    OUTPUT_PATH=/output/results.json
+# Pin a SMALL local model. The 7B OOM'd on a 14 GB box (fp32 ~28 GB); a 1.5B is
+# ~3 GB in bf16 / ~6 GB fp32 and fits any GPU pod with headroom -> no OOM risk.
+# Override at run time if the harness pins a different local model.
+ENV LOCAL_MODEL=Qwen/Qwen2.5-1.5B-Instruct
+# REMOTE_MODEL stays overridable so the harness can pin a specific Fireworks
+# model; FIREWORKS_API_KEY / FIREWORKS_BASE_URL are read from the environment.
+
 EXPOSE 8000
 
-# Start the FastAPI server. Override env vars at `docker run` time.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default entry point = the batch job (exits 0 after writing results.json).
+CMD ["python", "-m", "app.run_batch"]
+
+# The HTTP server is still available for local/interactive use — run it with:
+#   docker run --entrypoint uvicorn <img> app.main:app --host 0.0.0.0 --port 8000
