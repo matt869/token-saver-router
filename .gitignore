@@ -36,6 +36,9 @@ htmlcov/
 models_cache/
 hf_cache/
 
+# Local batch test I/O (sample inputs / generated results.json)
+io/
+
 # Editors / OS
 .vscode/
 .idea/

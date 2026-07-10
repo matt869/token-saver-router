@@ -47,7 +47,9 @@ def _emit(tid, answer):
 
 def _load_tasks(path: str) -> Optional[list]:
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        # utf-8-sig transparently strips a UTF-8 BOM if present and is a no-op
+        # otherwise, so a grader's BOM'd input file parses instead of zeroing us.
+        with open(path, "r", encoding="utf-8-sig") as fh:
             data = json.load(fh)
     except (OSError, ValueError) as exc:  # missing file or invalid JSON
         _log(f"cannot read {path!r}: {exc} -> writing empty results")
