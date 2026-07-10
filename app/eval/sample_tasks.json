@@ -1,50 +1,62 @@
 [
-  {
-    "id": 1,
-    "query": "What is the capital of France?",
-    "expected_route": "local",
-    "note": "Simple factual lookup."
-  },
-  {
-    "id": 2,
-    "query": "Define photosynthesis in one sentence.",
-    "expected_route": "local",
-    "note": "Short definition."
-  },
-  {
-    "id": 3,
-    "query": "Translate 'good morning' into Spanish.",
-    "expected_route": "local",
-    "note": "Trivial translation."
-  },
-  {
-    "id": 4,
-    "query": "How many days are there in a leap year?",
-    "expected_route": "local",
-    "note": "Basic fact."
-  },
-  {
-    "id": 5,
-    "query": "Prove that the square root of 2 is irrational and explain each step of the reasoning.",
-    "expected_route": "remote",
-    "note": "Multi-step formal proof."
-  },
-  {
-    "id": 6,
-    "query": "Design a distributed rate limiter and analyze its trade-offs under network partitions.",
-    "expected_route": "remote",
-    "note": "System design with analysis."
-  },
-  {
-    "id": 7,
-    "query": "Debug and refactor this recursive function to fix its exponential complexity and explain why the original was slow, step by step.",
-    "expected_route": "remote",
-    "note": "Code reasoning + optimization."
-  },
-  {
-    "id": 8,
-    "query": "Compare and contrast dynamic programming and greedy algorithms, and evaluate when each is optimal with concrete examples.",
-    "expected_route": "remote",
-    "note": "Comparative analysis."
-  }
+  {"id": 1, "category": "arithmetic", "expected_tier": "executor", "expected_route": "local",
+   "query": "12 * 47 + 5 = ?", "note": "keyword-free arithmetic -> executor solves at 0 tokens"},
+  {"id": 2, "category": "arithmetic", "expected_tier": "executor", "expected_route": "local",
+   "query": "What is 15% of 200?", "note": "percent -> executor"},
+
+  {"id": 3, "category": "algebra", "expected_tier": "executor", "expected_route": "local",
+   "query": "7x - 3 = 4x + 18", "note": "NAMED LEAK: keyword-free equation, no 'solve' -> executor (x=7)"},
+  {"id": 4, "category": "algebra", "expected_tier": "executor", "expected_route": "local",
+   "query": "If 3n + 7 = 25, what is n?", "note": "keyword-free linear equation -> executor"},
+  {"id": 5, "category": "algebra", "expected_tier": "executor", "expected_route": "local",
+   "query": "x^2 - 5x + 6 = 0", "note": "quadratic -> executor returns both roots"},
+
+  {"id": 6, "category": "code", "expected_tier": "executor", "expected_route": "local",
+   "query": "Write a function is_palindrome(s) that returns True for a palindrome. For example is_palindrome('racecar') == True and is_palindrome('hello') == False.",
+   "note": "NAMED LEAK: palindrome -> executor generates then RUNS the checks"},
+  {"id": 7, "category": "code", "expected_tier": "executor", "expected_route": "local",
+   "query": "Write a function add(a, b) that returns their sum. add(2, 3) == 5 and add(-1, 1) == 0.",
+   "note": "keyword-free code with inline checks -> executor verifies by execution"},
+
+  {"id": 8, "category": "logic", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops Lazzies?",
+   "note": "keyword-free syllogism, no trigger word -> must escalate, not guess local"},
+  {"id": 9, "category": "logic", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "Tom is taller than Jane, and Jane is taller than Sue. Who is the shortest?",
+   "note": "keyword-free ordering -> escalate"},
+  {"id": 10, "category": "logic", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "If 5 machines make 5 widgets in 5 minutes, how long for 100 machines to make 100 widgets?",
+   "note": "keyword-free rate puzzle (classic trap) -> escalate"},
+
+  {"id": 11, "category": "word_problem", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "A train travels 60 miles in 90 minutes. How many miles per hour is that?",
+   "note": "keyword-free word problem -> escalate"},
+  {"id": 12, "category": "word_problem", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "A shirt costs 40 dollars after a 20 percent discount. What was the original price?",
+   "note": "keyword-free multi-step word problem -> escalate (not cleanly executor-parseable)"},
+
+  {"id": 13, "category": "factual", "expected_tier": "local", "expected_route": "local",
+   "query": "What is the capital of France?", "note": "genuine easy lookup -> local"},
+  {"id": 14, "category": "factual", "expected_tier": "local", "expected_route": "local",
+   "query": "Who wrote Romeo and Juliet?", "note": "easy lookup -> local"},
+
+  {"id": 15, "category": "commonsense", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "Which is heavier, a pound of feathers or a pound of bricks?",
+   "note": "keyword-free trick question -> escalate (a small model confidently trips here)"},
+  {"id": 16, "category": "commonsense", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "How many months of the year have 28 days?",
+   "note": "keyword-free trick (all 12) -> escalate"},
+
+  {"id": 17, "category": "science", "expected_tier": "local", "expected_route": "local",
+   "query": "What is the chemical symbol for gold?", "note": "easy fact -> local"},
+  {"id": 18, "category": "science", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "Is 91 a prime number?",
+   "note": "keyword-free hard: no operator so not executor-math; a small model guesses -> escalate"},
+  {"id": 19, "category": "science", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "Two objects of different mass are dropped in a vacuum; which hits the ground first?",
+   "note": "keyword-free physics trap -> escalate"},
+
+  {"id": 20, "category": "reading", "expected_tier": "escalate", "expected_route": "remote",
+   "query": "The box was empty. Sara had already taken what was inside. Was the box empty before Sara arrived?",
+   "note": "keyword-free reading/inference -> escalate"}
 ]

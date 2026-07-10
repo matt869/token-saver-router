@@ -19,6 +19,7 @@ for example a fine-tuned distilled model — without touching ``agent.py``.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Protocol, runtime_checkable
 
@@ -40,6 +41,9 @@ EASY_KEYWORDS: List[str] = [
     "when was", "define", "definition of", "capital of", "translate",
     "spell", "how many", "how do you say", "meaning of", "synonym",
     "antonym", "hello", "hi ", "hey ", "thanks", "thank you",
+    # Common single-fact lookups that carry no hard-reasoning signal.
+    "who wrote", "who painted", "who invented", "who discovered",
+    "who directed", "who founded", "who created", "who composed",
 ]
 
 # Substrings that hint at code or math content (bias toward "hard").
@@ -113,6 +117,21 @@ class HeuristicClassifier:
             score += 0.15
 
         difficulty = _clamp(score, 0.0, 1.0)
+
+        # A prompt is AMBIGUOUS (not easy) when it either carries no signal at all
+        # OR carries an easy keyword but *also* shows a structural complexity
+        # signal (reasoning over given premises). Both cases must reach the judge
+        # (CLASSIFIER=llm) or escalate (CLASSIFIER=heuristic) rather than auto-
+        # answer local — an easy keyword alone must not force the local path.
+        # The pure-trick case (e.g. "how many months have 28 days") is structurally
+        # indistinguishable from an easy lookup, so it is left to the answer-time
+        # self-consistency gate rather than a brittle pattern. Empty stays local.
+        no_trigger = not (hard_hits or easy_hits or has_code_math or multi_question)
+        complexity = _complexity_signals(text)
+        ambiguous = no_trigger or bool(complexity)
+        if text and ambiguous and difficulty < self.decision_threshold:
+            difficulty = self.decision_threshold
+
         route = "remote" if difficulty >= self.decision_threshold else "local"
 
         signals = {
@@ -121,6 +140,8 @@ class HeuristicClassifier:
             "easy_hits": easy_hits,
             "has_code_math": has_code_math,
             "multi_question": multi_question,
+            "no_trigger": no_trigger,
+            "complexity": complexity,
             "length_factor": round(length_factor, 3),
             "length_cutoff": self.length_cutoff,
             "decision_threshold": self.decision_threshold,
@@ -130,6 +151,31 @@ class HeuristicClassifier:
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
+
+
+# A wh-question word. Reasoning-over-premises questions ("Tom is taller than
+# Jane. Who is the shortest?") pair one of these with a *separate declarative
+# premise* — that pairing is the structural tell that separates a hard trick from
+# a pure lookup ("What is the tallest mountain?"), which has no premise.
+_WH = re.compile(
+    r"\b(who|whom|which|what|when|where|"
+    r"how\s+(?:many|much|long|far|old|tall|fast|heavy|big|small))\b",
+    re.I,
+)
+
+
+def _complexity_signals(text: str) -> List[str]:
+    """Structural signals that a prompt is harder than its easy keyword suggests.
+
+    Deliberately NOT a trick-question pattern list (brittle vs. a hidden set).
+    The one signal here is *reasoning over given facts*: a declarative premise
+    plus a wh-question. A pure lookup has no premise, so it never fires — that is
+    what keeps "capital of France" / "tallest mountain" on the local path.
+    """
+    sents = [s.strip() for s in re.split(r"[.?!]+", text or "") if s.strip()]
+    has_question = any(_WH.search(s) for s in sents)
+    has_premise = any(not _WH.search(s) and len(s.split()) >= 3 for s in sents)
+    return ["premise+question"] if (has_question and has_premise) else []
 
 
 # --------------------------------------------------------------------------- #

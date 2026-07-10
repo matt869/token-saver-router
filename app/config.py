@@ -83,6 +83,8 @@ class Config:
     ids_enabled: bool  # regex inspection for heavy-compute signatures
     ids_threshold: float  # severity (0..1) at which IDS forces the remote route
     failover_enabled: bool  # on remote failure, serve from the local model
+    executor_enabled: bool  # deterministic math (sympy) + verified-code path, zero remote tokens
+    self_consistency_samples: int  # sample local N times; trust/cache only on agreement (1 = off)
 
 
 def load_config() -> Config:
@@ -131,4 +133,6 @@ def load_config() -> Config:
         ids_enabled=_get_bool("IDS_ENABLED", True),
         ids_threshold=_get_float("IDS_THRESHOLD", 0.5),
         failover_enabled=_get_bool("FAILOVER_ENABLED", True),
+        executor_enabled=_get_bool("EXECUTOR_ENABLED", True),
+        self_consistency_samples=_get_int("SELF_CONSISTENCY_SAMPLES", 3),
     )

@@ -288,7 +288,25 @@ class LocalModel:
         finally:
             self._lock.release()
 
-    def _generate_locked(self, prompt: str, max_new_tokens: Optional[int] = None) -> LocalResult:
+    def generate_samples(self, prompt: str, n: int, max_new_tokens: Optional[int] = None):
+        """Draw ``n`` *stochastic* samples for self-consistency checking.
+
+        Greedy decoding would return ``n`` identical answers, which can't reveal
+        uncertainty — so these use temperature sampling. Returns a list of
+        :class:`LocalResult`. The lock is held across all samples so concurrent
+        requests don't interleave on the GPU.
+        """
+
+        n = max(1, int(n))
+        self._lock.acquire()
+        try:
+            return [self._generate_locked(prompt, max_new_tokens, sample=True) for _ in range(n)]
+        finally:
+            self._lock.release()
+
+    def _generate_locked(
+        self, prompt: str, max_new_tokens: Optional[int] = None, sample: bool = False,
+    ) -> LocalResult:
         self.load()
         torch = self._torch
         tokenizer = self._tokenizer
@@ -318,7 +336,10 @@ class LocalModel:
 
         prompt_len = int(input_ids.shape[-1])
 
-        gen_kwargs = {"max_new_tokens": budget, "do_sample": False}
+        gen_kwargs = {"max_new_tokens": budget, "do_sample": sample}
+        if sample:
+            # Temperature sampling gives the diversity self-consistency needs.
+            gen_kwargs.update({"temperature": 0.7, "top_p": 0.95})
         if attention_mask is not None:
             gen_kwargs["attention_mask"] = attention_mask
 
