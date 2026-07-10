@@ -1,0 +1,29 @@
+# --- Service (always needed) ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+requests>=2.31
+
+# --- Token counting (real before/after measurement; falls back to chars/4) ---
+tiktoken>=0.7
+
+# --- Semantic cache (embeddings run locally => free in scoring) ---
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+
+# --- Local model path (optional: GPU / ML stack) ---
+# Imported lazily, so the API, router, classifier, and token-saving layers all
+# run and test without these installed. Install to enable the free local model
+# (and the LLM-as-a-Judge classifier, which rides on it).
+# Qwen2.5-7B-Instruct: ~15-16 GB VRAM in bf16, ~5-6 GB in 4-bit (default).
+# torch>=2.2
+# transformers>=4.56
+# accelerate>=0.30      # required for device_map placement of quantized weights
+# bitsandbytes>=0.43    # 4-bit (NF4) quantization — see LOAD_IN_4BIT in .env.example
+#   NOTE: the PyPI `bitsandbytes` wheel targets CUDA. On AMD/ROCm install the
+#   ROCm build instead (multi-backend): see
+#   https://huggingface.co/docs/bitsandbytes/main/en/installation#amd-gpu
+#   ROCm still presents the GPU as "cuda" to PyTorch, so no code change is needed.
+
+# --- Dev / tests ---
+pytest>=8.0

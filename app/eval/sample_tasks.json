@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "query": "What is the capital of France?",
+    "expected_route": "local",
+    "note": "Simple factual lookup."
+  },
+  {
+    "id": 2,
+    "query": "Define photosynthesis in one sentence.",
+    "expected_route": "local",
+    "note": "Short definition."
+  },
+  {
+    "id": 3,
+    "query": "Translate 'good morning' into Spanish.",
+    "expected_route": "local",
+    "note": "Trivial translation."
+  },
+  {
+    "id": 4,
+    "query": "How many days are there in a leap year?",
+    "expected_route": "local",
+    "note": "Basic fact."
+  },
+  {
+    "id": 5,
+    "query": "Prove that the square root of 2 is irrational and explain each step of the reasoning.",
+    "expected_route": "remote",
+    "note": "Multi-step formal proof."
+  },
+  {
+    "id": 6,
+    "query": "Design a distributed rate limiter and analyze its trade-offs under network partitions.",
+    "expected_route": "remote",
+    "note": "System design with analysis."
+  },
+  {
+    "id": 7,
+    "query": "Debug and refactor this recursive function to fix its exponential complexity and explain why the original was slow, step by step.",
+    "expected_route": "remote",
+    "note": "Code reasoning + optimization."
+  },
+  {
+    "id": 8,
+    "query": "Compare and contrast dynamic programming and greedy algorithms, and evaluate when each is optimal with concrete examples.",
+    "expected_route": "remote",
+    "note": "Comparative analysis."
+  }
+]

@@ -1,0 +1,44 @@
+# Keep the build context small and reproducible.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+ENV/
+
+.git/
+.gitignore
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets and local state never belong in the image.
+.env
+.env.local
+*.env
+
+# Caches / persisted artifacts
+.cache/
+*.sqlite
+*.sqlite3
+*.db
+*.faiss
+*.index
+models_cache/
+hf_cache/
+
+# Docs / dev-only files not needed at runtime.
+tests/
+README.md
+LICENSE
+*.md
+.dockerignore
+Dockerfile
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

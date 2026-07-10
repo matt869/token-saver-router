@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TokenSaver · savings dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1420; --panel: #171e2e; --edge: #26304a;
+      --ink: #e7ecf5; --muted: #93a1bd; --accent: #5cd6a0; --accent2: #6ea8fe;
+      --warn: #f0a35e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    header { padding: 22px 26px 6px; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: .3px; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    main { padding: 18px 26px 40px; max-width: 1040px; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+    .card {
+      background: var(--panel); border: 1px solid var(--edge);
+      border-radius: 12px; padding: 16px 18px;
+    }
+    .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+    .card .value { font-size: 26px; font-weight: 650; margin-top: 6px; }
+    .card .value.big { font-size: 30px; color: var(--accent); }
+    .card .foot { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    section { margin-top: 26px; }
+    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin: 0 0 12px; }
+    .layers { display: grid; gap: 12px; }
+    .layer { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 12px 14px; }
+    .layer .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .layer .name { font-weight: 600; }
+    .layer .amt { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .bar { height: 8px; border-radius: 6px; background: var(--edge); margin-top: 8px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+    .layer .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--edge); font-variant-numeric: tabular-nums; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--edge); color: var(--muted); }
+    .pill.exact { color: var(--accent); border-color: var(--accent); }
+    .pill.semantic { color: var(--accent2); border-color: var(--accent2); }
+    .wrap { overflow-x: auto; border: 1px solid var(--edge); border-radius: 10px; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; }
+    .stale .dot { background: var(--warn); }
+    footer { color: var(--muted); font-size: 12px; padding: 0 26px 30px; }
+    code { background: #0b0f18; padding: 1px 6px; border-radius: 5px; color: var(--accent2); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TokenSaver</h1>
+    <div class="sub"><span class="dot" id="live"></span><span id="status">connecting…</span> · counts via <code id="counter">—</code></div>
+  </header>
+  <main>
+    <div class="grid" id="tiles"></div>
+
+    <section>
+      <h2>Per-layer contribution</h2>
+      <div class="layers" id="layers"></div>
+    </section>
+
+    <section>
+      <h2>Recent requests</h2>
+      <div class="wrap">
+        <table id="recent">
+          <thead>
+            <tr><th>route</th><th>model</th><th>cache</th><th>tok before</th><th>tok after</th>
+                <th>preflight</th><th>cache avoided</th><th>routing</th><th>$ saved</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <footer>Polls <code>/metrics</code> every 2s. Dollar figures are estimates from the model price table.</footer>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const usd = (n) => "$" + (Number(n) || 0).toFixed(4);
+    const num = (n) => (Number(n) || 0).toLocaleString();
+
+    function tile(label, value, foot, big) {
+      return `<div class="card"><div class="label">${label}</div>
+        <div class="value${big ? " big" : ""}">${value}</div>
+        <div class="foot">${foot || ""}</div></div>`;
+    }
+
+    function render(m) {
+      const t = m.totals || {};
+      const before = t.prompt_tokens_before || 0, after = t.prompt_tokens_after || 0;
+      $("#counter").textContent = m.token_counter || "—";
+      $("#tiles").innerHTML = [
+        tile("Est. $ saved", usd(t.est_cost_saved_usd), `across ${num(m.requests)} requests`, true),
+        tile("Tokens saved", num(t.tokens_saved_total), "preflight + cache + routing"),
+        tile("Prompt tokens before → after", `${num(before)} → ${num(after)}`,
+             before ? `${(100 * (before - after) / before).toFixed(1)}% lighter on billed prompts` : ""),
+        tile("Cache hit rate", ((m.cache?.hit_rate ?? 0) * 100).toFixed(1) + "%",
+             `${num(m.cache?.exact_hits)} exact · ${num(m.cache?.semantic_hits)} semantic`),
+        tile("Remote tokens spent", num(t.remote_tokens_spent), usd(t.est_cost_spent_usd) + " billed"),
+      ].join("");
+
+      const layers = m.layers || {};
+      const rows = [
+        ["Compression (preflight)", layers.compression?.tokens_saved, layers.compression?.est_cost_saved_usd,
+          `${num(layers.compression?.requests_touched)} requests compressed`],
+        ["Exact cache", layers.exact_cache?.tokens_avoided, layers.exact_cache?.est_cost_saved_usd,
+          `${num(layers.exact_cache?.hits)} hits`],
+        ["Semantic cache", layers.semantic_cache?.tokens_avoided, layers.semantic_cache?.est_cost_saved_usd,
+          `${num(layers.semantic_cache?.hits)} hits`],
+        ["Routing (cheaper tier)", layers.routing?.est_tokens_avoided, layers.routing?.est_cost_saved_usd,
+          `${num(layers.routing?.answers)} answered off the main model`],
+      ];
+      const maxTok = Math.max(1, ...rows.map((r) => Number(r[1]) || 0));
+      $("#layers").innerHTML = rows.map(([name, tok, dollars, meta]) => `
+        <div class="layer">
+          <div class="top"><span class="name">${name}</span><span class="amt">${num(tok)} tok · ${usd(dollars)}</span></div>
+          <div class="bar"><span style="width:${(100 * (Number(tok) || 0) / maxTok).toFixed(1)}%"></span></div>
+          <div class="meta">${meta}</div>
+        </div>`).join("");
+
+      const body = $("#recent tbody");
+      body.innerHTML = (m.recent || []).slice().reverse().map((r) => {
+        const cache = r.cache_hit_type && r.cache_hit_type !== "none"
+          ? `<span class="pill ${r.cache_hit_type}">${r.cache_hit_type}</span>` : "";
+        return `<tr>
+          <td>${r.route || ""}</td><td>${(r.model_routed_to || "").split("/").pop()}</td><td>${cache}</td>
+          <td>${num(r.prompt_tokens_before)}</td><td>${num(r.prompt_tokens_after)}</td>
+          <td>${num(r.tokens_saved_preflight)}</td><td>${num(r.tokens_avoided_cache)}</td>
+          <td>${num(r.est_tokens_avoided_routing)}</td><td>${usd(r.est_cost_saved_usd)}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    async function poll() {
+      try {
+        const res = await fetch("/metrics", { cache: "no-store" });
+        if (!res.ok) throw new Error(res.status);
+        render(await res.json());
+        $("#status").textContent = "live";
+        $("#live").parentElement.classList.remove("stale");
+      } catch (e) {
+        $("#status").textContent = "reconnecting…";
+        $("#live").parentElement.classList.add("stale");
+      }
+    }
+    poll();
+    setInterval(poll, 2000);
+  </script>
+</body>
+</html>
